@@ -69,6 +69,11 @@ let hash_item =
       Some {ByStr32} result
     end
 
+let hash_matches =
+  fun (a : ByStr32) =>
+  fun (b : ByStr32) =>
+    builtin eq a b
+
 let zero = Uint128 0
 let yes = True
 let none = None {ByStr20}
@@ -202,9 +207,8 @@ procedure VerifyInclusion(epoch_number: Uint32, leaf_hash: ByStr32, leaf: Distri
     ThrowError err
   | Some root =>
     hash_in_proof =
-      let list_exists_hashes = @list_exists ByStr32 in
-      let hash_match = fun (item: ByStr32) => builtin eq item leaf_hash in
-      list_exists_hashes hash_match proof;
+      let in_list = @list_mem ByStr32 in
+      in_list hash_matches leaf_hash proof;
     match hash_in_proof with
     | False =>
       err = CodeInvalidProof;
@@ -219,7 +223,7 @@ procedure VerifyInclusion(epoch_number: Uint32, leaf_hash: ByStr32, leaf: Distri
         err = CodeInvalidProof;
         ThrowError err
       | Some proof_root =>
-        valid_root = builtin eq root proof_root;
+        valid_root = hash_matches root proof_root;
         match valid_root with
         | False =>
           err = CodeInvalidProof;
@@ -262,10 +266,6 @@ transition Claim(claim: Claim)
       event e
     end
   end
-end
-
-transition ClaimMultiple(claims: List Claim)
-
 end
 
 (* @dev: Sets the distribution merkle root for the epoch. Only can be called by the contract_owner. Epochs must be set in order. *)
