@@ -52,27 +52,25 @@ let hash_leaf =
       builtin sha256hash bytes
     end
 
-let hash_branch =
+let bystr32_lt =
   fun (h1 : ByStr32) =>
   fun (h2 : ByStr32) =>
-    let bytes = builtin concat h1 h2 in
-    builtin sha256hash bytes
+    let h1int = builtin to_uint256 h1 in
+    let h2int = builtin to_uint256 h2 in
+    builtin lt h1int h2int
 
-let hash_item =
-  fun (acc : Option ByStr32) =>
-  fun (item : ByStr32) =>
-    match acc with
-    | None =>
-      Some {ByStr32} item
-    | Some prev =>
-      let result = hash_branch prev item in
-      Some {ByStr32} result
+let hash_leaves =
+  fun (h1 : ByStr32) =>
+  fun (h2 : ByStr32) =>
+    let less = bystr32_lt h1 h2 in
+    match less with
+    | True =>
+      let bytes = builtin concat h1 h2 in
+      builtin sha256hash bytes
+    | False =>
+      let bytes = builtin concat h2 h1 in
+      builtin sha256hash bytes
     end
-
-let hash_matches =
-  fun (a : ByStr32) =>
-  fun (b : ByStr32) =>
-    builtin eq a b
 
 let zero = Uint128 0
 let yes = True
@@ -199,38 +197,22 @@ procedure IsValidEpochToSet(epoch_number: Uint32)
   end
 end
 
-procedure VerifyInclusion(epoch_number: Uint32, leaf_hash: ByStr32, leaf: DistributionLeaf, proof: List ByStr32)
+procedure VerifyInclusion(epoch_number: Uint32, leaf_hash: ByStr32, proof: List ByStr32)
   maybe_root <- merkle_roots[epoch_number];
   match maybe_root with
   | None =>
     err = CodeInvalidEpoch;
     ThrowError err
   | Some root =>
-    hash_in_proof =
-      let in_list = @list_mem ByStr32 in
-      in_list hash_matches leaf_hash proof;
-    match hash_in_proof with
+    proof_root =
+      let hash_list = @list_foldl ByStr32 ByStr32 in
+      hash_list hash_leaves leaf_hash proof;
+    valid_root = builtin eq root proof_root;
+    match valid_root with
     | False =>
       err = CodeInvalidProof;
       ThrowError err
-    | True =>
-      maybe_proof_root =
-        let hash_list = @list_foldl ByStr32 (Option ByStr32) in
-        let null = None {ByStr32} in
-        hash_list hash_item null proof;
-      match maybe_proof_root with
-      | None =>
-        err = CodeInvalidProof;
-        ThrowError err
-      | Some proof_root =>
-        valid_root = hash_matches root proof_root;
-        match valid_root with
-        | False =>
-          err = CodeInvalidProof;
-          ThrowError err
-        | True => (* ok *)
-        end
-      end
+    | True => (* ok *)
     end
   end
 end
@@ -258,7 +240,7 @@ transition Claim(claim: Claim)
 
       IsSender account;
       IsUnclaimed epoch_number leaf_hash;
-      VerifyInclusion epoch_number leaf_hash leaf proof;
+      VerifyInclusion epoch_number leaf_hash proof;
       Distribute account amount;
 
       claimed_leafs[epoch_number][leaf_hash] := yes;
