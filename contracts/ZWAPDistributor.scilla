@@ -290,3 +290,11 @@ transition AcceptOwnership()
   e = {_eventname : "OwnershipTransferAccepted"; previous_contract_owner : previous_contract_owner; contract_owner : _sender};
   event e
 end
+
+(***************************************)
+(*             Callbacks               *)
+(***************************************)
+
+transition MintSuccessCallBack(minter: ByStr20, recipient: ByStr20, amount: Uint128)
+  (* no-op, nothing needs to be done as mint throws and reverts txn on failure anyway *)
+end
