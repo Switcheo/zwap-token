@@ -5,7 +5,7 @@ scilla_version 0
 (***************************************************)
 
 import ListUtils
-library ZAPDistributor
+library ZWAPDistributor
 
 let one_msg =
   fun (msg : Message) =>
@@ -80,9 +80,9 @@ let none = None {ByStr20}
 (*             The contract definition             *)
 (***************************************************)
 
-contract ZAPDistibutor
+contract ZWAPDistibutor
 (
-  zap_token_contract : ByStr20,
+  zwap_token_contract : ByStr20,
   init_owner : ByStr20
 )
 
@@ -218,7 +218,7 @@ procedure VerifyInclusion(epoch_number: Uint32, leaf_hash: ByStr32, proof: List 
 end
 
 procedure Distribute(recipient: ByStr20, amount: Uint128)
-  msg_to_token = {_tag : "Mint"; _recipient : zap_token_contract; _amount : zero;
+  msg_to_token = {_tag : "Mint"; _recipient : zwap_token_contract; _amount : zero;
                   recipient : recipient; amount : amount};
   msgs = one_msg msg_to_token;
   send msgs

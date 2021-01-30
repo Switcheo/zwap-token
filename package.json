@@ -1,0 +1,13 @@
+{
+  "name": "zwap-token",
+  "version": "1.0.0",
+  "description": "ZWAP token is the valueless governance token for Zilswap.",
+  "main": "scripts/claim.js",
+  "repository": "git@github.com:Switcheo/zap-token.git",
+  "author": "Ivan Poon <ivan.poon@switcheo.network>",
+  "license": "MIT",
+  "dependencies": {
+    "@zilliqa-js/zilliqa": "^2.1.0",
+    "tslib": "^2.1.0"
+  }
+}
