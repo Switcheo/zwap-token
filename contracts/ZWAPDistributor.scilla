@@ -80,7 +80,7 @@ let none = None {ByStr20}
 (*             The contract definition             *)
 (***************************************************)
 
-contract ZWAPDistibutor
+contract ZWAPDistributor
 (
   zwap_token_contract : ByStr20,
   init_owner : ByStr20
