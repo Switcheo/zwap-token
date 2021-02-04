@@ -67,12 +67,12 @@ contract ZWAPToken
   symbol: String,
   decimals: Uint32,
   init_supply : Uint128,
-  init_owner: ByStr20
+  contract_owner: ByStr20
 )
 
 (* Mutable fields *)
 
-field contract_owner : Option ByStr20 = Some {ByStr20} init_owner
+field current_owner : Option ByStr20 = Some {ByStr20} contract_owner
 field pending_owner : Option ByStr20 = none
 
 field minters: Map ByStr20 Bool
@@ -82,7 +82,7 @@ field total_supply : Uint128 = init_supply
 
 field balances: Map ByStr20 Uint128
   = let emp_map = Emp ByStr20 Uint128 in
-    builtin put emp_map init_owner init_supply
+    builtin put emp_map contract_owner init_supply
 
 field allowances: Map ByStr20 (Map ByStr20 Uint128)
   = Emp ByStr20 (Map ByStr20 Uint128)
@@ -97,7 +97,7 @@ procedure ThrowError(err : Error)
 end
 
 procedure IsOwner(address: ByStr20)
-  maybe_current_owner <- contract_owner;
+  maybe_current_owner <- current_owner;
   match maybe_current_owner with
   | Some current_owner =>
     is_owner = builtin eq current_owner address;
@@ -246,37 +246,37 @@ transition Burn(burn_account: ByStr20, amount: Uint128)
   send msgs
 end
 
-(* @dev: Removes the contract_owner, meaning that new minters can no longer be added. Must not have a pending owner. *)
+(* @dev: Removes the current_owner, meaning that new minters can no longer be added. Must not have a pending owner. *)
 transition RevokeOwnership()
   IsOwner _sender;
   NoPendingOwner;
-  contract_owner := none;
-  e = {_eventname : "OwnershipRevoked"; contract_owner : _sender};
+  current_owner := none;
+  e = {_eventname : "OwnershipRevoked"; current_owner : _sender};
   event e
 end
 
 (* @dev: Transfers contract ownership to a new address. The new address must call the AcceptOwnership transition to finalize the transfer. *)
-(* @param new_owner: Address of the new contract_owner.                                                                                    *)
+(* @param new_owner: Address of the new current_owner.                                                                                    *)
 transition TransferOwnership(new_owner: ByStr20)
   IsOwner _sender;
   o = Some {ByStr20} new_owner;
   pending_owner := o;
-  e = {_eventname : "OwnershipTransferInitiated"; contract_owner : _sender; pending_owner : new_owner};
+  e = {_eventname : "OwnershipTransferInitiated"; current_owner : _sender; pending_owner : new_owner};
   event e
 end
 
-(* @dev: Finalizes transfer of contract ownership. Must be called by the new contract_owner. *)
+(* @dev: Finalizes transfer of contract ownership. Must be called by the new current_owner. *)
 transition AcceptOwnership()
   IsPendingOwner _sender;
-  previous_contract_owner <- contract_owner;
+  previous_current_owner <- current_owner;
   o = Some {ByStr20} _sender;
-  contract_owner := o;
+  current_owner := o;
   pending_owner := none;
-  e = {_eventname : "OwnershipTransferAccepted"; previous_contract_owner : previous_contract_owner; contract_owner : _sender};
+  e = {_eventname : "OwnershipTransferAccepted"; previous_current_owner : previous_current_owner; current_owner : _sender};
   event e
 end
 
-(* @dev: Allows the minter to mint tokens. Only the contract_owner can call this. *)
+(* @dev: Allows the minter to mint tokens. Only the current_owner can call this. *)
 (* @param minter: Address of the new minter.                                      *)
 transition AddMinter(minter: ByStr20)
   IsOwner _sender;
@@ -290,7 +290,7 @@ transition AddMinter(minter: ByStr20)
   end
 end
 
-(* @dev: Removes permission for the minter to mint tokens. Only the contract_owner can call this. *)
+(* @dev: Removes permission for the minter to mint tokens. Only the current_owner can call this. *)
 (* @param minter: Address of the minter to remove.                                                *)
 transition RemoveMinter(minter: ByStr20)
   IsOwner _sender;
