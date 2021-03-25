@@ -59,7 +59,7 @@ async function distribute() {
   // get current epoch
   const epochNumber = await getCurrentEpoch()
   // set merkle root
-  setMerkleRoot((epochNumber - 1).toString(), result)
+  await setMerkleRoot((epochNumber - 1).toString(), result)
 
   console.log("Epoch distribution done.")
 }
@@ -82,43 +82,56 @@ async function getCurrentEpoch() {
   return result.current_epoch
 }
 
-async function setMerkleRoot(epochNumber, merkleRoot) {
-  const balance = (await zilliqa.blockchain.getBalance(address)).result.balance
-  console.log(`Setting merkle root, zil balance is: ${balance}`)
+async function setMerkleRoot(epochNumber, merkleRoot, attempt = 0) {
+  try {
+    const balance = (await zilliqa.blockchain.getBalance(address)).result.balance
+    console.log(`Setting merkle root, zil balance is: ${balance}`)
 
-  const minGasPrice = (await zilliqa.blockchain.getMinimumGasPrice()).result
-  const contract = zilliqa.contracts.at(getContractAddress())
-  const callTx = await contract.call(
-    'SetMerkleRoot',
-    [
+    const minGasPrice = (await zilliqa.blockchain.getMinimumGasPrice()).result
+    const contract = zilliqa.contracts.at(getContractAddress())
+    const callTx = await contract.call(
+      'SetMerkleRoot',
+      [
+        {
+          vname: 'epoch_number',
+          type: 'Uint32',
+          value: epochNumber
+        },
+        {
+          vname: 'merkle_root',
+          type: 'ByStr32',
+          value: merkleRoot
+        },
+      ],
       {
-        vname: 'epoch_number',
-        type: 'Uint32',
-        value: epochNumber
+        version: VERSION,
+        amount: new BN(0),
+        gasPrice: new BN(minGasPrice),
+        gasLimit: Long.fromNumber(25000),
       },
-      {
-        vname: 'merkle_root',
-        type: 'ByStr32',
-        value: merkleRoot
-      },
-    ],
-    {
-      version: VERSION,
-      amount: new BN(0),
-      gasPrice: new BN(minGasPrice),
-      gasLimit: Long.fromNumber(25000),
-    },
-    33,
-    1000,
-    false,
-  )
+      33,
+      1000,
+      false,
+    )
 
-  if (!callTx.receipt || !callTx.receipt.success) {
-    console.log(JSON.stringify(callTx.receipt, null, 4))
-    throw new Error('Failed to set merkle root')
+    if (!callTx.receipt || !callTx.receipt.success) {
+      console.log(JSON.stringify(callTx.receipt, null, 4))
+      throw new Error('Failed to set merkle root')
+    }
+
+    console.log('Merkle root set.')
+  } catch (err) {
+    if (attempt > 9) {
+      console.log("Failed to set merkle root, giving up.")
+      throw err
+    }
+    console.log("Failed to set merkle root, retrying.")
+    await setMerkleRoot(epochNumber, merkleRoot, ++attempt)
   }
-
-  console.log('Merkle root set.')
 }
 
-distribute()
+distribute().catch(err => {
+  console.error(err)
+}).then(() => {
+  console.log('End of script.')
+})
