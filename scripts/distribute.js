@@ -121,6 +121,7 @@ async function setMerkleRoot(epochNumber, merkleRoot, attempt = 0) {
 
     console.log('Merkle root set.')
   } catch (err) {
+    console.error(err)
     if (attempt > 9) {
       console.log("Failed to set merkle root, giving up.")
       throw err
