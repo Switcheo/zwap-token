@@ -1,0 +1,50 @@
+scilla_version 0
+
+(***************************************************)
+(*               Associated library                *)
+(***************************************************)
+
+import ListUtils
+library MultiDistributor
+
+let map_msgs = fun (list : List (Pair ByStr20 Claim)) =>
+  let foldl = @list_foldl (Pair ByStr20 Claim) (List Message) in
+  let init = Nil {Message} in
+  let iter =
+    fun (msgs : List Message) =>
+    fun (item : (Pair ByStr20 Claim)) =>
+      match item with
+      | Pair address claim =>
+        let msg = {_tag : "Claim"; _recipient : address; _amount : zero; claim : claim} in
+        Cons {Message} msg msgs
+      end
+  in
+  foldl iter init list
+
+(***************************************************)
+(*             The contract definition             *)
+(***************************************************)
+
+contract MultiDistributor
+(
+)
+
+(**************************************)
+(*             Procedures             *)
+(**************************************)
+
+
+(***************************************)
+(*             Transitions             *)
+(***************************************)
+
+(* @dev: Claims from multiple distributions at one go. *)
+(* @param claims: List of claims to invoke.            *)
+transition ClaimMulti(claims: List (Pair ByStr20 Claim))
+  msgs = map_msgs claims;
+  send msgs
+end
+
+(***************************************)
+(*             Callbacks               *)
+(***************************************)

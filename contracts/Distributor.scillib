@@ -1,0 +1,73 @@
+
+import ListUtils
+
+library Distributor
+
+let one_msg =
+  fun (msg : Message) =>
+  let nil_msg = Nil {Message} in
+  Cons {Message} msg nil_msg
+
+(* Error events *)
+type Error =
+| CodeNotSender
+| CodeNotOwner
+| CodeNotPendingOwner
+| CodePendingOwnerNotEmpty
+| CodeInvalidEpoch
+| CodeInvalidProof
+| CodeAlreadyClaimed
+
+let make_error =
+  fun (result : Error) =>
+    let result_code =
+      match result with
+      | CodeNotSender             => Int32 -1
+      | CodeNotOwner              => Int32 -2
+      | CodeNotPendingOwner       => Int32 -3
+      | CodePendingOwnerNotEmpty  => Int32 -4
+      | CodeInvalidEpoch          => Int32 -5
+      | CodeInvalidProof          => Int32 -6
+      | CodeAlreadyClaimed        => Int32 -7
+      end
+    in
+    { _exception : "Error"; code : result_code }
+
+type DistributionLeaf =
+| DistributionLeaf of ByStr20 Uint128 (* account, amount *)
+
+type Claim =
+| Claim of Uint32 DistributionLeaf (List ByStr32) (* epoch number, leaf, proof path as a list of hashes *)
+
+let hash_leaf =
+  fun (d : DistributionLeaf) =>
+    match d with
+    | DistributionLeaf account amount =>
+      let amt_hash = builtin sha256hash amount in
+      let bytes = builtin concat account amt_hash in
+      builtin sha256hash bytes
+    end
+
+let bystr32_lt =
+  fun (h1 : ByStr32) =>
+  fun (h2 : ByStr32) =>
+    let h1int = builtin to_uint256 h1 in
+    let h2int = builtin to_uint256 h2 in
+    builtin lt h1int h2int
+
+let hash_leaves =
+  fun (h1 : ByStr32) =>
+  fun (h2 : ByStr32) =>
+    let less = bystr32_lt h1 h2 in
+    match less with
+    | True =>
+      let bytes = builtin concat h1 h2 in
+      builtin sha256hash bytes
+    | False =>
+      let bytes = builtin concat h2 h1 in
+      builtin sha256hash bytes
+    end
+
+let zero = Uint128 0
+let yes = True
+let none = None {ByStr20}
