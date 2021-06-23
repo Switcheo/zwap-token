@@ -4,7 +4,7 @@ scilla_version 0
 (*               Associated library                *)
 (***************************************************)
 
-import ListUtils
+import ListUtils DistributorLib
 library MultiDistributor
 
 let map_msgs = fun (list : List (Pair ByStr20 Claim)) =>
@@ -25,14 +25,7 @@ let map_msgs = fun (list : List (Pair ByStr20 Claim)) =>
 (*             The contract definition             *)
 (***************************************************)
 
-contract MultiDistributor
-(
-)
-
-(**************************************)
-(*             Procedures             *)
-(**************************************)
-
+contract MultiDistributor()
 
 (***************************************)
 (*             Transitions             *)
@@ -44,7 +37,3 @@ transition ClaimMulti(claims: List (Pair ByStr20 Claim))
   msgs = map_msgs claims;
   send msgs
 end
-
-(***************************************)
-(*             Callbacks               *)
-(***************************************)

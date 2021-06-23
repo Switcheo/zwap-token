@@ -1,7 +1,12 @@
+scilla_version 0
+
+(***********************************************)
+(*        Shared distributor library           *)
+(***********************************************)
 
 import ListUtils
 
-library Distributor
+library DistributorLib
 
 let one_msg =
   fun (msg : Message) =>
@@ -71,3 +76,5 @@ let hash_leaves =
 let zero = Uint128 0
 let yes = True
 let none = None {ByStr20}
+
+contract DistributorLib()
