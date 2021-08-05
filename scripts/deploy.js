@@ -17,7 +17,7 @@ async function deploy(privateKey) {
       {
         vname: 'zwap_token_contract',
         type: 'ByStr20',
-        value: owner,
+        value: process.env.ZWAP_TOKEN,
       },
       {
         vname: 'init_owner',
