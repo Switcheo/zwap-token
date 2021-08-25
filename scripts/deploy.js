@@ -9,76 +9,70 @@ const { VERSION, zilliqa, network, useKey } = require('./zilliqa')
 const readFile = util.promisify(fs.readFile)
 
 async function deploy(privateKey) {
-  const [lib, _] = await deployLibrary(privateKey)
+  // const [lib, _] = await deployLibrary(privateKey)
   const owner = getAddressFromPrivateKey(privateKey)
-  await deployContractUsingLib(privateKey, './contracts/MultiDistributor.scilla', lib.address)
-  await deployContractUsingLib(privateKey, './contracts/ZWAPDistributor.scilla', lib.address,
-    [
-      {
-        vname: 'zwap_token_contract',
-        type: 'ByStr20',
-        value: process.env.ZWAP_TOKEN,
-      },
-      {
-        vname: 'init_owner',
-        type: 'ByStr20',
-        value: owner,
-      },
-      {
-        vname: 'initial_epoch',
-        type: 'Uint32',
-        value: '0',
-      },
-    ]
-  )
-}
-
-async function deployContractUsingLib(privateKey, file, libraryAddress, additionalInit = []) {
-  const code = (await readFile(file)).toString()
   const init = [
     {
-      vname: '_scilla_version',
+      vname: 'zwap_token_contract',
+      type: 'ByStr20',
+      value: process.env.ZWAP_TOKEN,
+    },
+    {
+      vname: 'init_owner',
+      type: 'ByStr20',
+      value: owner,
+    },
+  ]
+  await deployContract(privateKey, './contracts/v1/ZWAPDistributor.scilla', init)
+  await deployContract(privateKey, './contracts/v2/MultiDistributor.scilla')
+  await deployContract(privateKey, './contracts/v2/ZWAPStaticDistributor.scilla', init)
+  await deployContract(privateKey, './contracts/v2/ZWAPDistributor.scilla', [...init,
+    {
+      vname: 'initial_epoch',
       type: 'Uint32',
       value: '0',
-    },
-    {
-      vname: '_library',
-      type: 'Bool',
-      value: { constructor: 'True', argtypes: [], arguments: [] },
-    },
-    {
-      vname: '_extlibs',
-      type: 'List (Pair (String) (ByStr20))',
-      value: [
-        // {
-        //   constructor : 'Pair',
-        //   argtypes : ['String', 'ByStr20'],
-        //   arguments : ['DistributorLib', libraryAddress.toLowerCase()]
-        // },
-      ]
-    },
-    ...additionalInit
-  ];
+    }
+  ])
+}
 
+// async function deployContractUsingLib(privateKey, file, libraryAddress, additionalInit = []) {
+//   const init = [
+//     {
+//       vname: '_library',
+//       type: 'Bool',
+//       value: { constructor: 'True', argtypes: [], arguments: [] },
+//     },
+//     {
+//       vname: '_extlibs',
+//       type: 'List(Pair String ByStr20)',
+//       value: [
+//         {
+//           constructor: 'Pair',
+//           argtypes: ['String', 'ByStr20'],
+//           arguments: ['DistributorLib', libraryAddress.toLowerCase()]
+//         },
+//       ]
+//     },
+//     ...additionalInit
+//   ];
+
+//   return deployContract(privateKey, file, init)
+// }
+
+// async function deployLibrary(privateKey) {
+//   console.info(`Deploying distributor library...`)
+//   const init = [
+//     {
+//       vname: '_library',
+//       type: 'Bool',
+//       value: { constructor: 'True', argtypes: [], arguments: [] },
+//     }
+//   ]
+//   return deployContract(privateKey, './contracts/v2/DistributorLib.scillib', init)
+// }
+
+async function deployContract(privateKey, file, additionalInit = []) {
   console.info(`Deploying contract ${file}...`)
-  return deployContract(privateKey, code, init)
-}
-
-async function deployLibrary(privateKey) {
-  const code = (await readFile('./contracts/DistributorLib.scillib')).toString()
-  const init = [
-    {
-      vname: '_scilla_version',
-      type: 'Uint32',
-      value: '0',
-    },
-  ];
-
-  console.info(`Deploying distributor library...`)
-  return deployContract(privateKey, code, init)
-}
-
-async function deployContract(privateKey, code, init) {
   useKey(privateKey)
 
   // Check for account
@@ -91,6 +85,15 @@ async function deployContract(privateKey, code, init) {
   const minGasPrice = await zilliqa.blockchain.getMinimumGasPrice()
 
   // Deploy contract
+  const code = (await readFile(file)).toString()
+  const init = [
+    {
+      vname: '_scilla_version',
+      type: 'Uint32',
+      value: '0',
+    },
+    ...additionalInit
+  ]
   const contract = zilliqa.contracts.new(code, init)
   const [deployTx, res] = await contract.deploy(
     {

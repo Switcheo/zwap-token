@@ -4,8 +4,17 @@ scilla_version 0
 (*               Associated library                *)
 (***************************************************)
 
-import ListUtils DistributorLib
+import ListUtils
+
 library MultiDistributor
+
+type DistributionLeaf =
+| DistributionLeaf of ByStr20 Uint128 (* account, amount *)
+
+type Claim =
+| Claim of Uint32 DistributionLeaf (List ByStr32) (* epoch number, leaf, proof path as a list of hashes *)
+
+let zero = Uint128 0
 
 let map_msgs = fun (list : List (Pair ByStr20 Claim)) =>
   let foldl = @list_foldl (Pair ByStr20 Claim) (List Message) in
@@ -15,8 +24,15 @@ let map_msgs = fun (list : List (Pair ByStr20 Claim)) =>
     fun (item : (Pair ByStr20 Claim)) =>
       match item with
       | Pair address claim =>
-        let msg = {_tag : "Claim"; _recipient : address; _amount : zero; claim : claim} in
-        Cons {Message} msg msgs
+        match claim with
+        | Claim epoch_number leaf proof =>
+          match leaf with
+          | DistributionLeaf account amount =>
+            let msg = {_tag : "ClaimRaw"; _recipient : address; _amount : zero;
+                       epoch_number : epoch_number; account : account; amount: amount; proof : proof} in
+            Cons {Message} msg msgs
+          end
+        end
       end
   in
   foldl iter init list

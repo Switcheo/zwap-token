@@ -15,3 +15,5 @@ This repository contains the Scilla smart contracts for the ZWAP token as well a
 ### MainNet
 
 - ZWAP Token: [`0xba11eb7bcc0a02e947acf03cc651bfaf19c9ec00`](https://viewblock.io/zilliqa/address/0xba11eb7bcc0a02e947acf03cc651bfaf19c9ec00?network=mainnet)
+
+- V1 ZWAP Distributor:

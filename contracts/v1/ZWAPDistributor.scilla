@@ -1,0 +1,300 @@
+scilla_version 0
+
+(***************************************************)
+(*               Associated library                *)
+(***************************************************)
+
+import ListUtils
+library ZWAPDistributor
+
+let one_msg =
+  fun (msg : Message) =>
+  let nil_msg = Nil {Message} in
+  Cons {Message} msg nil_msg
+
+(* Error events *)
+type Error =
+| CodeNotSender
+| CodeNotOwner
+| CodeNotPendingOwner
+| CodePendingOwnerNotEmpty
+| CodeInvalidEpoch
+| CodeInvalidProof
+| CodeAlreadyClaimed
+
+let make_error =
+  fun (result : Error) =>
+    let result_code =
+      match result with
+      | CodeNotSender             => Int32 -1
+      | CodeNotOwner              => Int32 -2
+      | CodeNotPendingOwner       => Int32 -3
+      | CodePendingOwnerNotEmpty  => Int32 -4
+      | CodeInvalidEpoch          => Int32 -5
+      | CodeInvalidProof          => Int32 -6
+      | CodeAlreadyClaimed        => Int32 -7
+      end
+    in
+    { _exception : "Error"; code : result_code }
+
+type DistributionLeaf =
+| DistributionLeaf of ByStr20 Uint128 (* account, amount *)
+
+type Claim =
+| Claim of Uint32 DistributionLeaf (List ByStr32) (* epoch number, leaf, proof path as a list of hashes *)
+
+let hash_leaf =
+  fun (d : DistributionLeaf) =>
+    match d with
+    | DistributionLeaf account amount =>
+      let amt_hash = builtin sha256hash amount in
+      let bytes = builtin concat account amt_hash in
+      builtin sha256hash bytes
+    end
+
+let bystr32_lt =
+  fun (h1 : ByStr32) =>
+  fun (h2 : ByStr32) =>
+    let h1int = builtin to_uint256 h1 in
+    let h2int = builtin to_uint256 h2 in
+    builtin lt h1int h2int
+
+let hash_leaves =
+  fun (h1 : ByStr32) =>
+  fun (h2 : ByStr32) =>
+    let less = bystr32_lt h1 h2 in
+    match less with
+    | True =>
+      let bytes = builtin concat h1 h2 in
+      builtin sha256hash bytes
+    | False =>
+      let bytes = builtin concat h2 h1 in
+      builtin sha256hash bytes
+    end
+
+let zero = Uint128 0
+let yes = True
+let none = None {ByStr20}
+
+(***************************************************)
+(*             The contract definition             *)
+(***************************************************)
+
+contract ZWAPDistributor
+(
+  zwap_token_contract : ByStr20,
+  init_owner : ByStr20
+)
+
+(* Mutable fields *)
+
+field contract_owner : Option ByStr20 = Some {ByStr20} init_owner
+field pending_owner : Option ByStr20 = none
+
+field merkle_roots : Map Uint32 ByStr32 (* epoch num -> merkle root *)
+  = Emp Uint32 ByStr32
+
+field claimed_leafs : Map Uint32 (Map ByStr32 Bool) (* epoch num -> leaf hash -> True *)
+  = Emp Uint32 (Map ByStr32 Bool)
+
+(**************************************)
+(*             Procedures             *)
+(**************************************)
+
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
+
+procedure IsSender(address: ByStr20)
+  is_sender = builtin eq _sender address;
+  match is_sender with
+  | True =>
+  | False =>
+  err = CodeNotSender;
+  ThrowError err
+  end
+end
+
+procedure IsOwner(address: ByStr20)
+  maybe_current_owner <- contract_owner;
+  match maybe_current_owner with
+  | Some current_owner =>
+    is_owner = builtin eq current_owner address;
+    match is_owner with
+    | True =>
+    | False =>
+      err = CodeNotOwner;
+      ThrowError err
+    end
+  | None =>
+    err = CodeNotOwner;
+    ThrowError err
+  end
+end
+
+procedure IsPendingOwner(address: ByStr20)
+  maybe_pending_owner <- pending_owner;
+  match maybe_pending_owner with
+  | Some current_pending_owner =>
+    is_pending_owner = builtin eq current_pending_owner address;
+    match is_pending_owner with
+    | True =>
+    | False =>
+      err = CodeNotPendingOwner;
+      ThrowError err
+    end
+  | None =>
+    err = CodeNotPendingOwner;
+    ThrowError err
+  end
+end
+
+procedure NoPendingOwner()
+  maybe_pending_owner <- pending_owner;
+  match maybe_pending_owner with
+  | Some p =>
+    err = CodePendingOwnerNotEmpty;
+    ThrowError err
+  | None =>
+  end
+end
+
+procedure IsUnclaimed(epoch_number: Uint32, leaf_hash: ByStr32)
+  claimed <- claimed_leafs[epoch_number][leaf_hash];
+  match claimed with
+  | None =>
+  | Some true =>
+    err = CodeAlreadyClaimed;
+    ThrowError err
+  end
+end
+
+procedure IsValidEpochToSet(epoch_number: Uint32)
+  is_initial_epoch =
+    let z = Uint32 0 in
+    builtin eq epoch_number z;
+  match is_initial_epoch with
+  | True => (* noop *)
+  | False =>
+    prev_epoch =
+      let one = Uint32 1 in
+      builtin sub epoch_number one;
+    previous_root <- merkle_roots[prev_epoch];
+    match previous_root with
+    | Some val =>
+    | None =>
+      err = CodeInvalidEpoch; (* previous root not set*)
+      ThrowError err
+    end
+  end;
+  current_root <- merkle_roots[epoch_number];
+  match current_root with
+  | None =>
+  | Some val =>
+    err = CodeInvalidEpoch; (* already set*)
+    ThrowError err
+  end
+end
+
+procedure VerifyInclusion(epoch_number: Uint32, leaf_hash: ByStr32, proof: List ByStr32)
+  maybe_root <- merkle_roots[epoch_number];
+  match maybe_root with
+  | None =>
+    err = CodeInvalidEpoch;
+    ThrowError err
+  | Some root =>
+    proof_root =
+      let hash_list = @list_foldl ByStr32 ByStr32 in
+      hash_list hash_leaves leaf_hash proof;
+    valid_root = builtin eq root proof_root;
+    match valid_root with
+    | False =>
+      err = CodeInvalidProof;
+      ThrowError err
+    | True => (* ok *)
+    end
+  end
+end
+
+procedure Distribute(recipient: ByStr20, amount: Uint128)
+  msg_to_token = {_tag : "Mint"; _recipient : zwap_token_contract; _amount : zero;
+                  recipient : recipient; amount : amount};
+  msgs = one_msg msg_to_token;
+  send msgs
+end
+
+(***************************************)
+(*             Transitions             *)
+(***************************************)
+
+(* @dev: Claims from a distribution for an epoch by providing proof of inclusion. *)
+(* @param claim_index: The epoch number and leaf index for this claim.            *)
+(* @param claim_data: The leaf data and list of hashes that can prove this claim. *)
+transition Claim(claim: Claim)
+  match claim with
+  | Claim epoch_number leaf proof =>
+    match leaf with
+    | DistributionLeaf account amount =>
+      leaf_hash = hash_leaf leaf;
+
+      IsSender account;
+      IsUnclaimed epoch_number leaf_hash;
+      VerifyInclusion epoch_number leaf_hash proof;
+      Distribute account amount;
+
+      claimed_leafs[epoch_number][leaf_hash] := yes;
+      e = {_eventname : "Claimed"; epoch_number: epoch_number; data : leaf};
+      event e
+    end
+  end
+end
+
+(* @dev: Sets the distribution merkle root for the epoch. Only can be called by the contract_owner. Epochs must be set in order. *)
+(* @param epoch_number: The epoch number for this distribution.                                                                  *)
+(* @param merkle_root: The root of the merkle tree for this distribution.                                                        *)
+transition SetMerkleRoot(epoch_number: Uint32, merkle_root: ByStr32)
+  IsOwner _sender;
+  IsValidEpochToSet epoch_number;
+  merkle_roots[epoch_number] := merkle_root;
+  e = {_eventname : "MerkleRootSet"; epoch_number : epoch_number; merkle_root : merkle_root};
+  event e
+end
+
+(* @dev: Removes the contract_owner, meaning that new minters can no longer be added. Must not have a pending owner. *)
+transition RevokeOwnership()
+  IsOwner _sender;
+  NoPendingOwner;
+  contract_owner := none;
+  e = {_eventname : "OwnershipRevoked"; contract_owner : _sender};
+  event e
+end
+
+(* @dev: Transfers contract ownership to a new address. The new address must call the AcceptOwnership transition to finalize the transfer. *)
+(* @param new_owner: Address of the new contract_owner.                                                                                    *)
+transition TransferOwnership(new_owner: ByStr20)
+  IsOwner _sender;
+  o = Some {ByStr20} new_owner;
+  pending_owner := o;
+  e = {_eventname : "OwnershipTransferInitiated"; contract_owner : _sender; pending_owner : new_owner};
+  event e
+end
+
+(* @dev: Finalizes transfer of contract ownership. Must be called by the new contract_owner. *)
+transition AcceptOwnership()
+  IsPendingOwner _sender;
+  previous_contract_owner <- contract_owner;
+  o = Some {ByStr20} _sender;
+  contract_owner := o;
+  pending_owner := none;
+  e = {_eventname : "OwnershipTransferAccepted"; previous_contract_owner : previous_contract_owner; contract_owner : _sender};
+  event e
+end
+
+(***************************************)
+(*             Callbacks               *)
+(***************************************)
+
+transition MintSuccessCallBack(minter: ByStr20, recipient: ByStr20, amount: Uint128)
+  (* no-op, nothing needs to be done as mint throws and reverts txn on failure anyway *)
+end

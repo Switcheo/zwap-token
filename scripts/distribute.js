@@ -1,51 +1,20 @@
-const { BN, Long, bytes, units } = require('@zilliqa-js/util')
-const { Zilliqa } = require('@zilliqa-js/zilliqa')
-const { getAddressFromPrivateKey } = require('@zilliqa-js/crypto')
 const fetch = require('node-fetch')
+const { BN, Long } = require('@zilliqa-js/util')
+const { getAddressFromPrivateKey } = require('@zilliqa-js/crypto')
+const { VERSION, zilliqa, network } = require('./zilliqa')
 
 const network = process.env.NETWORK || 'localhost'
-
-function getZilliqaURL() {
-  switch (network) {
-    case 'mainnet': return 'https://api.zilliqa.com'
-    case 'testnet': return 'https://dev-api.zilliqa.com'
-    case 'localhost': return 'https://dev-api.zilliqa.com'
-    default: throw new Error('Invalid network')
-  }
-}
-
-function getChainId() {
-  switch (network) {
-    case 'mainnet': return 1
-    case 'testnet': return 333
-    case 'localhost': return 333
-    default: throw new Error('Invalid network')
-  }
-}
-
-function getStatsURL() {
-  switch (network) {
-    case 'mainnet': return 'https://stats.zilswap.org'
-    case 'testnet': return 'https://test-stats.zilswap.org'
-    case 'localhost': return 'http://localhost:3000'
-    default: throw new Error('Invalid network')
-  }
-}
 
 function getContractAddress() {
   switch (network) {
     case 'mainnet': return '0xca6d3f56218aaa89cd20406cf22aee26ba8f6089'
-    case 'testnet': return '0x3fba5482e459ae8cc61143f5dca3f3b44e59e07b'
-    case 'localhost': return '0x3fba5482e459ae8cc61143f5dca3f3b44e59e07b'
+    case 'testnet': return '0x55fc7c40cc9d190aad1499c00102de0828c06d41'
+    case 'localhost': return ''
     default: throw new Error('Invalid network')
   }
 }
 
-const zilliqa = new Zilliqa(getZilliqaURL())
-const VERSION = bytes.pack(getChainId(), 1)
-
 const privateKey = process.env.PRIVATE_KEY
-zilliqa.wallet.addByPrivateKey(privateKey)
 const address = getAddressFromPrivateKey(privateKey)
 console.log(`Address is: ${address}`)
 
