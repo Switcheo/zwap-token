@@ -34,7 +34,7 @@ async function distribute() {
 }
 
 async function generateEpoch() {
-  const response = await fetch(`${getStatsURL()}/epoch/generate`)
+  const response = await fetch(`${getStatsURL()}/epoch/generate/0`)
   const result = await response.json()
   if (result == "Epoch already generated!") {
     return null
