@@ -45,13 +45,23 @@ const getChainID = (network) => {
       return 222
   }
 }
+const getStatsURL = (network) => {
+  switch (network) {
+    case 'mainnet': return 'https://stats.zilswap.org'
+    case 'testnet': return 'https://test-stats.zilswap.org'
+    case 'localhost': return 'http://localhost:3000'
+    default: throw new Error('Invalid network')
+  }
+}
 
 const network = getNetwork()
 const rpc = getRPC(network)
 const VERSION = bytes.pack(getChainID(network), 1)
 const zilliqa = new Zilliqa(rpc)
+const statsURL = getStatsURL(network)
 
 exports.useKey = useKey
 exports.network = network
 exports.zilliqa = zilliqa
+exports.statsURL = statsURL
 exports.VERSION = VERSION
