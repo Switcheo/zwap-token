@@ -12,9 +12,15 @@ async function distribute() {
   const distributors = await getDistributors()
   const promises = distributors.map((d, i) => {
     // get current epoch
-    const { emission_info: { epoch_period, initial_epoch_number, total_number_of_epochs, distribution_start_time } } = d
+    const { emission_info: { epoch_period, initial_epoch_number, total_number_of_epochs, distribution_start_time, retroactive_distribution_cutoff_time } } = d
     const now = Math.floor(Date.now() / 1000);
-    const epochNumber = Math.max(0, Math.ceil((distribution_start_time - now) / epoch_period) - 1)
+    const epochNumber = Math.max(0, Math.floor((now - distribution_start_time) / epoch_period) + initial_epoch_number - 1)
+
+    // check if started
+    if (now < distribution_start_time + epoch_period && (retroactive_distribution_cutoff_time === 0 || now <= retroactive_distribution_cutoff_time)) {
+      console.log(`${d.name} not started, skipping it.`)
+      return null
+    }
 
     // check if distributed
     if (epochNumber > initial_epoch_number + total_number_of_epochs - 1) {

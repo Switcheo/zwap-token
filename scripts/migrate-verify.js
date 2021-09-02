@@ -23,6 +23,7 @@ async function verify(legacyAddress, newAddress, maxEpoch) {
     console.log(`found ${newClaimedLeafs.length} claimed leafs`)
   }
 
+
   if (!!newState.merkle_roots[maxEpoch + 1] || !!newState.claimed_leafs[maxEpoch + 1]) {
     throw new Error('new state has too many epochs')
   }
