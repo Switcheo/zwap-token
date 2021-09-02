@@ -17,10 +17,7 @@ let one_msg =
 
 (* Error events *)
 type Error =
-| CodeNotSender
 | CodeNotOwner
-| CodeNotPendingOwner
-| CodePendingOwnerNotEmpty
 | CodeInvalidEpoch
 | CodeInvalidProof
 | CodeAlreadyClaimed
@@ -29,13 +26,10 @@ let make_error =
   fun (result : Error) =>
     let result_code =
       match result with
-      | CodeNotSender             => Int32 -1
-      | CodeNotOwner              => Int32 -2
-      | CodeNotPendingOwner       => Int32 -3
-      | CodePendingOwnerNotEmpty  => Int32 -4
-      | CodeInvalidEpoch          => Int32 -5
-      | CodeInvalidProof          => Int32 -6
-      | CodeAlreadyClaimed        => Int32 -7
+      | CodeNotOwner              => Int32 -1
+      | CodeInvalidEpoch          => Int32 -2
+      | CodeInvalidProof          => Int32 -3
+      | CodeAlreadyClaimed        => Int32 -4
       end
     in
     { _exception : "Error"; code : result_code }
@@ -76,6 +70,7 @@ let hash_leaves =
     end
 
 let zero = Uint128 0
+let one = Uint32 1
 let yes = True
 let none = None {ByStr20}
 
@@ -100,6 +95,8 @@ field merkle_roots : Map Uint32 ByStr32 (* epoch num -> merkle root *)
 
 field claimed_leafs : Map Uint32 (Map ByStr32 Bool) (* epoch num -> leaf hash -> True *)
   = Emp Uint32 (Map ByStr32 Bool)
+
+field next_epoch_number : Uint32 = Uint32 0
 
 (**************************************)
 (*             Procedures             *)
@@ -207,7 +204,7 @@ transition Claim(claim: Claim)
   end
 end
 
-(* @dev: Sets the distribution merkle roots and claimed data for all epochs from a legacy distributor contract. Only can be called once by the contract_owner. *)
+(* @dev: Sets the distribution merkle roots and claimed data for the next available epoch from a legacy distributor contract. Only can be called by the contract_owner. *)
 (* @param _merkle_roots: The map of merkle roots by epoch number *)
 (* @param _claimed_leafs: The map of claimed leafs by epoch number and address *)
 transition MigrateData(
@@ -218,14 +215,29 @@ transition MigrateData(
 )
   IsOwner _sender;
 
-  mr <- & legacy_contract.merkle_roots;
-  merkle_roots := mr;
-  cl <- & legacy_contract.claimed_leafs;
-  claimed_leafs := cl;
+  epoch_number <- next_epoch_number;
 
-  contract_owner := none;
+  maybe_root <- & legacy_contract.merkle_roots[epoch_number];
+  match maybe_root with
+  | None =>
+    err = CodeInvalidEpoch;
+    ThrowError err
+  | Some root =>
+    maybe_leafs <- & legacy_contract.claimed_leafs[epoch_number];
+    match maybe_leafs with
+    | None =>
+      err = CodeInvalidEpoch;
+      ThrowError err
+    | Some leafs =>
+      merkle_roots[epoch_number] := root;
+      claimed_leafs[epoch_number] := leafs
+    end
+  end;
 
-  e = {_eventname : "DataMigrated"};
+  new_epoch_number = builtin add one epoch_number;
+  next_epoch_number := new_epoch_number;
+
+  e = {_eventname : "DataMigrated"; epoch_number: epoch_number};
   event e
 end
 
@@ -235,6 +247,14 @@ transition TransferOwnership(new_owner: ByStr20)
   IsOwner _sender;
   o = Some {ByStr20} new_owner;
   e = {_eventname : "OwnershipTransferred"; contract_owner : o};
+  event e
+end
+
+(* @dev: Removes the contract_owner, meaning that new minters can no longer be added. Must not have a pending owner. *)
+transition RevokeOwnership()
+  IsOwner _sender;
+  contract_owner := none;
+  e = {_eventname : "OwnershipRevoked"; contract_owner : _sender};
   event e
 end
 
