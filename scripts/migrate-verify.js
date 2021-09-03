@@ -7,6 +7,7 @@ async function verify(legacyAddress, newAddress, maxEpoch) {
   const oldState = await oldContract.getState()
   const newState = await newContract.getState()
 
+  let sum = 0
   for (let i = 0; i <= maxEpoch; ++i) {
     console.log(`checking epoch ${i}`)
     const epoch = i.toString()
@@ -17,12 +18,15 @@ async function verify(legacyAddress, newAddress, maxEpoch) {
     }
     const newClaimedLeafs = Object.keys(newState.claimed_leafs[epoch])
     const oldClaimedLeafs = Object.keys(oldState.claimed_leafs[epoch])
+    sum += oldClaimedLeafs.length
     if (newClaimedLeafs.length === 0 || JSON.stringify(newClaimedLeafs) !== JSON.stringify(oldClaimedLeafs)) {
       throw new Error(`new state claimed leafs at epoch ${i} is ${newClaimedLeafs}, expected ${oldClaimedLeafs}`)
     }
     console.log(`found ${newClaimedLeafs.length} claimed leafs`)
   }
 
+  sum += Object.keys(oldState.claimed_leafs[maxEpoch + 1]).length
+  console.log(`found ${sum} old total claimed lefas`)
 
   if (!!newState.merkle_roots[maxEpoch + 1] || !!newState.claimed_leafs[maxEpoch + 1]) {
     throw new Error('new state has too many epochs')

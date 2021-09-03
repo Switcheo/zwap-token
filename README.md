@@ -18,5 +18,5 @@ This repository contains the Scilla smart contracts for the ZWAP token as well a
 - ZWAP Token: [`0x0d21c1901a06abee40d8177f95171c8c63abdc31`](https://viewblock.io/zilliqa/address/0x0d21c1901a06abee40d8177f95171c8c63abdc31?network=mainnet)
 - Multi-Distributor: [`0x31608451f965b5efe6319af0e14bc6e4bc6d147f`](https://viewblock.io/zilliqa/address/0x31608451f965b5efe6319af0e14bc6e4bc6d147f?network=mainnet)
 - ZWAP Legacy Distributor: ~~[`0xca6d3f56218aaa89cd20406cf22aee26ba8f6089`](https://viewblock.io/zilliqa/address/0xca6d3f56218aaa89cd20406cf22aee26ba8f6089?network=mainnet)~~
-- ZWAP Static Distributor: [`0x094920e3b1b8672826a4b2c601999d14eecbeb86`](https://viewblock.io/zilliqa/address/0x094920e3b1b8672826a4b2c601999d14eecbeb86?network=mainnet)
-- ZWAP Distributor: [`0x3b01123a67a7a52405ec7cf3083faca65056aec1`](https://viewblock.io/zilliqa/address/0x3b01123a67a7a52405ec7cf3083faca65056aec1?network=mainnet)
+- ZWAP Static Distributor: [`0xe499fe6c9e4085198a3355362c2bb120fc8d43fa`](https://viewblock.io/zilliqa/address/0xe499fe6c9e4085198a3355362c2bb120fc8d43fa?network=mainnet)
+- ZWAP Distributor: [`0xe5e274f59482759c1a0c13682ff3ec3efeb22d2a`](https://viewblock.io/zilliqa/address/0xe5e274f59482759c1a0c13682ff3ec3efeb22d2a?network=mainnet)

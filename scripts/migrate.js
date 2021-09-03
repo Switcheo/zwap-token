@@ -60,6 +60,7 @@ async function migrate(privateKey, legacyAddress, newAddress, minEpoch, maxEpoch
       amount: new BN(0),
       gasPrice: new BN(minGasPrice),
       gasLimit: Long.fromNumber(10000),
+      nonce: nonce + maxEpoch - minEpoch,
     },
     33,
     1000,

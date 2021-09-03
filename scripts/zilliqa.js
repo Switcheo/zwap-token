@@ -26,7 +26,7 @@ const getNetwork = () => {
 const getRPC = (network) => {
   switch (network) {
     case 'mainnet':
-      return 'http://54.179.103.190'
+      return 'https://api.zilliqa.com'
     case 'testnet':
       return 'https://dev-api.zilliqa.com'
     default:
