@@ -1,0 +1,53 @@
+scilla_version 0
+
+(***************************************************)
+(*               Associated library                *)
+(***************************************************)
+
+import ListUtils
+
+library MultiDistributor
+
+let zero = Uint128 0
+
+let map_msgs = fun (account : ByStr20) => fun (list : List (Pair ByStr20 (List (Pair (Pair Uint32 Uint128) (List ByStr32))))) =>
+  let foldl = @list_foldl (Pair ByStr20 (List (Pair (Pair Uint32 Uint128) (List ByStr32)))) (List Message) in
+  let init = Nil {Message} in
+  let iter =
+    fun (msgs : List Message) =>
+    fun (item : (Pair ByStr20 (List (Pair (Pair Uint32 Uint128) (List ByStr32))))) =>
+      match item with
+      | Pair address claims =>
+        let msg = {_tag : "ClaimMulti"; _recipient : address; _amount : zero;
+                  account: account; claims: claims} in
+        Cons {Message} msg msgs
+      end
+  in
+  foldl iter init list
+
+(***************************************************)
+(*             The contract definition             *)
+(***************************************************)
+
+contract MultiDistributor()
+
+(***************************************)
+(*             Transitions             *)
+(***************************************)
+
+(* @dev: Claims from multiple distributions at one go. *)
+(* @param: account: The address to claim for                                                     *)
+(* @param claims: List of claims to invoke as [(distributor, [((epoch_number, amount), proof)])] *)
+transition ClaimMulti(
+  account: ByStr20,
+  claims: List (Pair
+    ByStr20 (* distributor *)
+    (List (Pair (* list of claims for distributor *)
+      (Pair Uint32 Uint128)  (* epoch_number, amount *)
+      (List ByStr32) (* proof as a list of hashes *)
+    ))
+  )
+)
+  msgs = map_msgs account claims;
+  send msgs
+end
