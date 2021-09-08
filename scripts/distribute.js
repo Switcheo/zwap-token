@@ -1,7 +1,7 @@
 const fetch = require('node-fetch')
 const { BN, Long } = require('@zilliqa-js/util')
 const { getAddressFromPrivateKey } = require('@zilliqa-js/crypto')
-const { VERSION, zilliqa, statsURL } = require('./zilliqa')
+const { VERSION, zilliqa, statsURL, useKey } = require('./zilliqa')
 
 const privateKey = process.env.PRIVATE_KEY
 const address = getAddressFromPrivateKey(privateKey)
@@ -97,6 +97,8 @@ async function setMerkleRoot(epochNumber, merkleRoot, distrAddress, attempt = 0)
   try {
     const balance = (await zilliqa.blockchain.getBalance(address)).result.balance
     console.log(`Setting merkle root, zil balance is: ${balance}`)
+
+    useKey(privateKey);
 
     const minGasPrice = (await zilliqa.blockchain.getMinimumGasPrice()).result
     const contract = zilliqa.contracts.at(distrAddress)
