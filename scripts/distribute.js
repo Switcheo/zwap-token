@@ -10,7 +10,7 @@ console.log(`Sender address is: ${address}`)
 async function distribute() {
   // get distributors
   const distributors = await getDistributors()
-  const promises = distributors.map((d, i) => {
+  const promises = distributors.map(async (d, i) => {
     // get current epoch
     const { emission_info: { epoch_period, initial_epoch_number, total_number_of_epochs, distribution_start_time, retroactive_distribution_cutoff_time } } = d
     const now = Math.floor(Date.now() / 1000);
@@ -22,9 +22,17 @@ async function distribute() {
       return null
     }
 
-    // check if distributed
+    // check if last epoch passed
     if (epochNumber > initial_epoch_number + total_number_of_epochs - 1) {
       console.log(`${d.name} ended, skipping it.`)
+      return null
+    }
+
+    // check if distributed
+    const contract = zilliqa.contracts.at(d.distributor_address_hex)
+    const result = await contract.getSubState("merkle_roots")
+    if (result.merkle_roots[epochNumber]) {
+      console.log(`${d.name} ${epochNumber} merkle root already set.`)
       return null
     }
 
