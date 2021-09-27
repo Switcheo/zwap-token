@@ -1,13 +1,16 @@
 const fetch = require('node-fetch')
 const { BN, Long } = require('@zilliqa-js/util')
-const { getAddressFromPrivateKey } = require('@zilliqa-js/crypto')
 const { VERSION, zilliqa, statsURL, useKey } = require('./zilliqa')
 
-const privateKey = process.env.PRIVATE_KEY
-const address = getAddressFromPrivateKey(privateKey)
-console.log(`Sender address is: ${address}`)
+let nonce = 0
 
 async function distribute() {
+  useKey(process.env.PRIVATE_KEY)
+  console.log(`Sender address is: ${zilliqa.wallet.defaultAccount.address}`)
+  const balance = await zilliqa.blockchain.getBalance(zilliqa.wallet.defaultAccount.address);
+  console.log(`Balance is: ${balance.result.balance} ZIL\n===`)
+  nonce = balance.result.nonce
+
   // get distributors
   const distributors = await getDistributors()
   const promises = distributors.map(async (d, i) => {
@@ -103,10 +106,7 @@ async function getDistributors() {
 
 async function setMerkleRoot(epochNumber, merkleRoot, distrAddress, attempt = 0) {
   try {
-    const balance = (await zilliqa.blockchain.getBalance(address)).result.balance
-    console.log(`Setting merkle root, zil balance is: ${balance}`)
-
-    useKey(privateKey);
+    console.log(`Setting merkle root with nonce: ${++nonce}`)
 
     const minGasPrice = (await zilliqa.blockchain.getMinimumGasPrice()).result
     const contract = zilliqa.contracts.at(distrAddress)
@@ -129,6 +129,7 @@ async function setMerkleRoot(epochNumber, merkleRoot, distrAddress, attempt = 0)
         amount: new BN(0),
         gasPrice: new BN(minGasPrice),
         gasLimit: Long.fromNumber(25000),
+        nonce,
       },
       33,
       1000,
