@@ -53,23 +53,23 @@ async function migrate(privateKey, legacyAddress, newAddress, minEpoch, maxEpoch
     }
   }
 
-  const revokeTx = newContract.call(
-    'RevokeOwnership', [],
-    {
-      version: VERSION,
-      amount: new BN(0),
-      gasPrice: new BN(minGasPrice),
-      gasLimit: Long.fromNumber(10000),
-      nonce: nonce + maxEpoch - minEpoch,
-    },
-    33,
-    1000,
-    false,
-  )
-  if (!revokeTx.receipt || !revokeTx.receipt.success) {
-    console.log(JSON.stringify(revokeTx.receipt, null, 4))
-    throw new Error('Failed to revoke ownership')
-  }
+  // const revokeTx = newContract.call(
+  //   'RevokeOwnership', [],
+  //   {
+  //     version: VERSION,
+  //     amount: new BN(0),
+  //     gasPrice: new BN(minGasPrice),
+  //     gasLimit: Long.fromNumber(10000),
+  //     nonce: nonce + maxEpoch - minEpoch,
+  //   },
+  //   33,
+  //   1000,
+  //   false,
+  // )
+  // if (!revokeTx.receipt || !revokeTx.receipt.success) {
+  //   console.log(JSON.stringify(revokeTx.receipt, null, 4))
+  //   throw new Error('Failed to revoke ownership')
+  // }
 
   const state = await newContract.getState()
   console.log(`New contract state:\n${JSON.stringify(state, null, 2)}`)

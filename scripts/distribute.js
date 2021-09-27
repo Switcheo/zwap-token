@@ -18,13 +18,13 @@ async function distribute() {
 
     // check if started
     if (now < distribution_start_time + epoch_period && (retroactive_distribution_cutoff_time === 0 || now <= retroactive_distribution_cutoff_time)) {
-      console.log(`${d.name} not started, skipping it.`)
+      console.log(`<${d.name}> not started, skipping it.`)
       return null
     }
 
     // check if last epoch passed
     if (epochNumber > initial_epoch_number + total_number_of_epochs - 1) {
-      console.log(`${d.name} ended, skipping it.`)
+      console.log(`<${d.name}> ended, skipping it.`)
       return null
     }
 
@@ -32,12 +32,12 @@ async function distribute() {
     const contract = zilliqa.contracts.at(d.distributor_address_hex)
     const result = await contract.getSubState("merkle_roots")
     if (result.merkle_roots[epochNumber]) {
-      console.log(`${d.name} ${epochNumber} merkle root already set.`)
+      console.log(`<${d.name}> epoch ${epochNumber} merkle root already set.`)
       return null
     }
 
     // generate and set merkle root
-    console.log(`Generating ${d.name} distribution for epoch ${epochNumber}`)
+    console.log(`Generating <${d.name}> distribution for epoch ${epochNumber}`)
     return generateAndSet(i, epochNumber, d.distributor_address_hex)
   }).filter(d => !!d)
 

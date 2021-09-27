@@ -6,7 +6,7 @@ scilla_version 0
 
 import ListUtils
 
-library ZWAPDistributor
+library ZWAPStaticDistributor
 
 (* [start] DistributorLib.scillib [start] *)
 
@@ -18,8 +18,6 @@ let one_msg =
 (* Error events *)
 type Error =
 | CodeNotOwner
-| CodeNotPendingOwner
-| CodePendingOwnerNotEmpty
 | CodeInvalidEpoch
 | CodeInvalidProof
 | CodeAlreadyClaimed
@@ -29,11 +27,9 @@ let make_error =
     let result_code =
       match result with
       | CodeNotOwner              => Int32 -1
-      | CodeNotPendingOwner       => Int32 -2
-      | CodePendingOwnerNotEmpty  => Int32 -3
-      | CodeInvalidEpoch          => Int32 -4
-      | CodeInvalidProof          => Int32 -5
-      | CodeAlreadyClaimed        => Int32 -6
+      | CodeInvalidEpoch          => Int32 -2
+      | CodeInvalidProof          => Int32 -3
+      | CodeAlreadyClaimed        => Int32 -4
       end
     in
     { _exception : "Error"; code : result_code }
@@ -84,7 +80,7 @@ let none = None {ByStr20}
 (*             The contract definition             *)
 (***************************************************)
 
-contract ZWAPDistributor
+contract ZWAPStaticDistributor
 (
   zwap_token_contract : ByStr20,
   init_owner : ByStr20
@@ -93,7 +89,6 @@ contract ZWAPDistributor
 (* Mutable fields *)
 
 field contract_owner : Option ByStr20 = Some {ByStr20} init_owner
-field pending_owner : Option ByStr20 = none
 
 field merkle_roots : Map Uint32 ByStr32 (* epoch num -> merkle root *)
   = Emp Uint32 ByStr32
@@ -129,50 +124,12 @@ procedure IsOwner(address: ByStr20)
   end
 end
 
-procedure IsPendingOwner(address: ByStr20)
-  maybe_pending_owner <- pending_owner;
-  match maybe_pending_owner with
-  | Some current_pending_owner =>
-    is_pending_owner = builtin eq current_pending_owner address;
-    match is_pending_owner with
-    | True =>
-    | False =>
-      err = CodeNotPendingOwner;
-      ThrowError err
-    end
-  | None =>
-    err = CodeNotPendingOwner;
-    ThrowError err
-  end
-end
-
-procedure NoPendingOwner()
-  maybe_pending_owner <- pending_owner;
-  match maybe_pending_owner with
-  | Some p =>
-    err = CodePendingOwnerNotEmpty;
-    ThrowError err
-  | None =>
-  end
-end
-
 procedure IsUnclaimed(epoch_number: Uint32, leaf_hash: ByStr32)
   claimed <- claimed_leafs[epoch_number][leaf_hash];
   match claimed with
   | None =>
   | Some true =>
     err = CodeAlreadyClaimed;
-    ThrowError err
-  end
-end
-
-procedure IsValidEpochToSet(epoch_number: Uint32)
-  next <- next_epoch_number;
-  is_valid_epoch = builtin eq epoch_number next;
-  match is_valid_epoch with
-  | True => (* noop *)
-  | False =>
-    err = CodeInvalidEpoch;
     ThrowError err
   end
 end
@@ -319,46 +276,20 @@ transition MigrateData(
   event e
 end
 
-(* @dev: Sets the distribution merkle root for the epoch. Only can be called by the contract_owner. Epochs must be set in order. *)
-(* @param epoch_number: The epoch number for this distribution.                                                                  *)
-(* @param merkle_root: The root of the merkle tree for this distribution.                                                        *)
-transition SetMerkleRoot(epoch_number: Uint32, merkle_root: ByStr32)
+(* @dev: Transfers contract ownership to a new address. The new address must call the AcceptOwnership transition to finalize the transfer. *)
+(* @param new_owner: Address of the new contract_owner.                                                                                    *)
+transition TransferOwnership(new_owner: ByStr20)
   IsOwner _sender;
-  IsValidEpochToSet epoch_number;
-  merkle_roots[epoch_number] := merkle_root;
-  new_epoch_number = builtin add one epoch_number;
-  next_epoch_number := new_epoch_number;
-  e = {_eventname : "MerkleRootSet"; epoch_number : epoch_number; merkle_root : merkle_root};
+  o = Some {ByStr20} new_owner;
+  e = {_eventname : "OwnershipTransferred"; contract_owner : o};
   event e
 end
 
 (* @dev: Removes the contract_owner, meaning that new minters can no longer be added. Must not have a pending owner. *)
 transition RevokeOwnership()
   IsOwner _sender;
-  NoPendingOwner;
   contract_owner := none;
   e = {_eventname : "OwnershipRevoked"; contract_owner : _sender};
-  event e
-end
-
-(* @dev: Transfers contract ownership to a new address. The new address must call the AcceptOwnership transition to finalize the transfer. *)
-(* @param new_owner: Address of the new contract_owner.                                                                                    *)
-transition TransferOwnership(new_owner: ByStr20)
-  IsOwner _sender;
-  o = Some {ByStr20} new_owner;
-  pending_owner := o;
-  e = {_eventname : "OwnershipTransferInitiated"; contract_owner : _sender; pending_owner : new_owner};
-  event e
-end
-
-(* @dev: Finalizes transfer of contract ownership. Must be called by the new contract_owner. *)
-transition AcceptOwnership()
-  IsPendingOwner _sender;
-  previous_contract_owner <- contract_owner;
-  o = Some {ByStr20} _sender;
-  contract_owner := o;
-  pending_owner := none;
-  e = {_eventname : "OwnershipTransferAccepted"; previous_contract_owner : previous_contract_owner; contract_owner : _sender};
   event e
 end
 

@@ -25,7 +25,6 @@ async function verify(legacyAddress, newAddress, maxEpoch) {
     console.log(`found ${newClaimedLeafs.length} claimed leafs`)
   }
 
-  sum += Object.keys(oldState.claimed_leafs[maxEpoch + 1]).length
   console.log(`found ${sum} old total claimed lefas`)
 
   if (!!newState.merkle_roots[maxEpoch + 1] || !!newState.claimed_leafs[maxEpoch + 1]) {
