@@ -282,6 +282,7 @@ end
 
 (* @dev: Accepts ZIL from anybody for distribution. *)
 transition AddFunds()
+  accept
 end
 
 (* @dev: Sets the distribution merkle root for the epoch. Only can be called by the contract_owner. Epochs must be set in order. *)
