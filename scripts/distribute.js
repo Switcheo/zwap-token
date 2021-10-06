@@ -5,6 +5,7 @@ const { VERSION, zilliqa, statsURL, useKey } = require('./zilliqa')
 let nonce = 0
 
 const setRootForIndexes = (process.env.SET_ROOT_FOR_DISTRIBUTOR_INDEXES || '0').split(',')
+console.log(`Setting root for indexes: ${setRootForIndexes.join(' ')}`)
 
 async function distribute() {
   useKey(process.env.PRIVATE_KEY)
@@ -54,16 +55,17 @@ async function distribute() {
 async function generateAndSet(id, epochNumber, distrAddress) {
   let merkleRoot = await generateEpoch(id, distrAddress)
   if (!merkleRoot) {
-    console.log('Epoch already generated, setting using historical data')
+    console.log(`Epoch already generated for ${distrAddress}, fetching generated data`)
     merkleRoot = await getMerkleRoot(distrAddress, epochNumber)
   }
   console.log(`Merkle root for ${distrAddress} is ${merkleRoot}.`)
 
   // set merkle root
   if (setRootForIndexes.includes(id.toString(10))) {
+    console.log(`Setting merkle root for ${distrAddress}`)
     await setMerkleRoot(epochNumber.toString(10), merkleRoot, distrAddress)
   }
-  console.log("Epoch distribution done.")
+  console.log(`Epoch distribution done for ${distrAddress}.`)
 }
 
 async function getMerkleRoot(distrAddress, epochNumber) {
