@@ -280,9 +280,12 @@ transition Claim(claim: Claim)
   end
 end
 
-(* @dev: Accepts ZIL from anybody for distribution. *)
-transition AddFunds()
-  accept
+(* @dev: Allows owner to rescue ZIL. *)
+transition Withdraw(amount: Uint128)
+  IsOwner _sender;
+  msg_add_funds = {_tag : "AddFunds"; _recipient : _sender; _amount : amount};
+  msgs = one_msg msg_add_funds;
+  send msgs
 end
 
 (* @dev: Sets the distribution merkle root for the epoch. Only can be called by the contract_owner. Epochs must be set in order. *)
@@ -332,6 +335,7 @@ end
 (*             Callbacks               *)
 (***************************************)
 
-transition MintSuccessCallBack(minter: ByStr20, recipient: ByStr20, amount: Uint128)
-  (* no-op, nothing needs to be done as mint throws and reverts txn on failure anyway *)
+(* @dev: Accepts ZIL from anybody for distribution. *)
+transition AddFunds()
+  accept
 end
