@@ -139,7 +139,7 @@ async function setMerkleRoot(epochNumber, merkleRoot, distrAddress, attempt = 0)
       },
       33,
       1000,
-      false,
+      true,
     )
 
     if (!callTx.receipt || !callTx.receipt.success) {
