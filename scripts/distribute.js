@@ -134,7 +134,7 @@ async function setMerkleRoot(epochNumber, merkleRoot, distrAddress, attempt = 0)
         version: VERSION,
         amount: new BN(0),
         gasPrice: new BN(minGasPrice),
-        gasLimit: Long.fromNumber(25000),
+        gasLimit: Long.fromNumber(50000),
         nonce,
       },
       33,
